@@ -1,19 +1,25 @@
 #!/bin/sh
 
-# Template for shell scripts
+# NAME
 #
-# Generates a template for shell scripting
+#   templator - A template for shell scripts
 #
-# Usage: <Command> <Language>, or run with --help
+# DESCRIPTION
 #
-# Commands:
-#    modulino       the largests template, can be used as library or script
-#    library        this is only sourced as library
-#    script         this is only used script
+#   Generates a template for shell scripting
 #
-# Language:
+# SYNOPSIS
 #
-#   Optional, helps to find the right template. Per default this is set to 'dash'
+#   <Command> <Language>, or run with --help
+#
+# OPTIONS
+#
+#   header|prelude|modulino)
+#   all)    #    the largests template, can be used as library or script
+#   library) #    this is only sourced as library
+#   script) #    this is only used script
+#
+#   Language: Optional, helps to find the right template. Per default this is set to 'dash'
 #
 
 set -u
@@ -28,39 +34,11 @@ die() {
 
 absdir() { (cd "${1}" && pwd -P); }
 stamp() { date +'%Y%m%d%H%M%S'; }
-sourcing() {
-    [ -n "${1:-}" ] && . "$1" || {
-        fail "(sourcing): cannot source file '${1:-}'"
-        return 1
-    }
-}
 
 
-bkb_utils_templator__init() {
 
-    local maindir=
-	#local maindir="${BKB_MODULINO_MAINDIR:-}"
-    #[ -n "${maindir:-}" ] && sourcing "$maindir/liburl.sh"
-    
-}
-
-bkb_utils_templator__run() {
-
-	local cmd=
-	while [ $# -gt 0 ]; do
-		case "$1" in
-		-*)
-			fail "unknown option"
-			return 1
-			;;
-		*)
-			cmd="$1"
-			shift
-			break
-			;;
-		esac
-		shift
-	done
+utils_templator__driver() {
+    local cmd="${1:-}"
 
 	if [ -z "$cmd" ]; then
 		fail "no cmd given"
@@ -68,37 +46,33 @@ bkb_utils_templator__run() {
 	fi
 
     local lang='dash'
-    [ -n "${1:-}" ] && lang="$1"
+    [ -n "${2:-}" ] && lang="$2"
 
-    local template="${BKB_MODULINO_MAINDIR:-}/_template.$lang"
+    local template="${UTILS_MAINSCRIPT_DIR:-}/_template.$lang"
     [ -f "$template" ] || {
         fail "found no template under '$template'"
         return 1
     }
 
-    local filter="${BKB_MODULINO_MAINDIR:-}/_template-filter.pl"
-    local filter="${BKB_MODULINO_MAINDIR:-}/_template-filter.pl"
+    local script="${UTILS_MAINSCRIPT_DIR:-}/_template-cutter.pl"
 
-    [ -f "$filter" ] || {
-        fail "found no filter under '$filter'"
+    [ -f "$script" ] || {
+        fail "found no script under '$script'"
         return 1
     }
 
-    local rx_init='/^\s*[a-zA-Z0-Z_]+__init\s*\(\s*\)\s*\{\s*/'
-    local rx_run='/^\s*[a-zA-Z0-Z_]+__run\s*\(\s*\)\s*\{\s*/'
-    local rx_main='/^\s*[a-zA-Z0-Z_]+__main\s*\(\s*\)\s*\{\s*/'
-    local rx_modulino='^\s*\}\s*#### ENDMAIN\s*/'
-
     case "$cmd" in
-        modulino)
-            echo  perl "$filter" "$template" "$rx_init" "$rx_run" "$rx_main" "$rx_modulino"
-            perl "$filter" "$template" "$rx_init" "$rx_run" "$rx_main" "$rx_modulino"
+        header|prelude|modulino)
+            perl "$script" "$template" $cmd 
+            ;;
+        all)
+            perl "$script" "$template"
             ;;
         library)
-            echo lll
+            perl "$script" "$template" header prelude
             ;;
         script)
-            echo sss
+            perl "$script" "$template" header prelude 'run' 'main' 
             ;;
         *)
             fail 'unknown target'
@@ -108,37 +82,30 @@ bkb_utils_templator__run() {
     
 }
 
-bkb_utils_templator__main() {
 
-	if [ $# -eq 0 ]; then
-		perl -ne 'die "$1\n" if /^#\s+(Usage:.*)$/' "$0" >&2
-		exit 1
-	else
-		case "$1" in
-		-h | --help)
-			perl -ne 'print "$1\n" if /^\s*#\s(.*)/; exit if /^\s*[^#\s]+/;' "$0" >&2
-			exit 1
-			;;
-		*) : ;;
-		esac
-	fi
+utils_templator__main() {
 
-    local mainlib=
-    #local mainlib="$BKB_MODULINO_MAINDIR/mainlib.sh"
-	if [ -n "${mainlib:-}" ] ; then
-       sourcing "$mainlib"  || die "Err: could not source bkblib" 
+    if [ $# -eq 0 ] ; then
+        info "not enough args"
+        perl -ne 's/^#+\s*//g; die "usage: $_" if($_ && $s); $s=1 if (/^SYNOPSIS\s*$/);' "$0" >&2
+        exit 1
+    else
+        while [ $# -gt 0 ]; do
+            case "${1:-}" in
+                -h | --help)
+                    perl -ne 'print "$1\n" if /^\s*#\s(.*)/; exit if /^\s*[^#\s]+/;' "$0" >&2
+                    exit 1
+                ;;
+                *) break ;;
+            esac
+        done
     fi
+
+    UTILS_MAINSCRIPT_DIR="$(dirname "$0")"
+    [ -d "$UTILS_MAINSCRIPT_DIR" ] || die "Err: invalid UTILS_MAINSCRIPT_DIR '$UTILS_MAINSCRIPT_DIR'"
+    # . "$UTILS_MAINSCRIPT_DIR/libmain.sh"
+    
+    utils_templator__driver "$@"
 }
 
-
-
-if [ -z "${BKB_MODULINO_MAINDIR:-}" ]; then
-	BKB_MODULINO_MAINDIR="$(absdir "$(dirname "$0")")" || die "Err: could not get absdir for '$0'"
-	[ -d "$BKB_MODULINO_MAINDIR" ] || die "Err: invalid dir for '$BKB_MODULINO_MAINDIR' for '$0'"
-	bkb_utils_templator__main "$@" && bkb_utils_templator__init && bkb_utils_templator__run "$@" || die "Abort ..."
-else
-	bkb_utils_templator__init || {
-		fail "(template__libinit): could not init"
-		return 1
-	}
-fi
+utils_templator__main "$@" || die 'Abort main ...'

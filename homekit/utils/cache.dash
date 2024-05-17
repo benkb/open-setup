@@ -1,37 +1,47 @@
 #!/bin/sh
 
-# Handle actions around personal cache directory
-#
-# Usage: <Command> [args], or run --help
-#
-# Command:
+# NAME
 #   
-#   reset 
-#   home|info        show the cache dir
+#   cache - handle the user cache
+#
+# DESCRIPTION
+#
+#   Handle actions around personal cache directory
+#
+# SYNOPSIS
+#
+#   cache <COMMAND> , or run --help
+#
+# COMMANDS
+#
+#       reset           remove contents from a cache subdir
+#       home|info       show the cache dir
+#       ls|list         list cache directories
 #
 #
 
 set -eu
 
-
 #### Prelude
 prn() { printf "%s" "$@"; }
 fail() { echo "Fail: $*" >&2; }
+warn() { echo "Warn: $*" >&2; }
 info() { echo "$@" >&2; }
-
 die() {
 	echo "$@" >&2
 	exit 1
 }
-
-absdir() { (cd "${1}" && pwd -P); }
 stamp() { date +'%Y%m%d%H%M%S'; }
+absdir() (cd "${1}" && pwd -P)
 
 utils_cache__init() {
-    :
+    if ! [ -d "${UTILS_MAINSCRIPT_DIR:-}" ]; then
+        fail "invalid UTILS_MAINSCRIPT_DIR in '${UTILS_MAINSCRIPT_DIR:-}'"
+        return 1
+    fi
 }
 
-utils_cache__get_cache_home(){
+utils_cache__get_home(){
 
     local cache_home="${XDG_CACHE_HOME:-$HOME/.cache}"
 
@@ -51,13 +61,12 @@ utils_cache__get_cache_home(){
 
 utils_cache__get_dir(){
     local subdir="${1:-}"
-
     if [ -z "$subdir" ] ; then
         fail '(cache__get_dir): no subdir'
         return 1
     fi
 
-    local  cache_home="$(utils_cache__get_cache_home)"
+    local  cache_home="$(utils_cache__get_home)"
 
     local cache_subdir="$cache_home/$subdir"
     if [ -d "$cache_subdir" ]  ; then
@@ -66,8 +75,6 @@ utils_cache__get_dir(){
         fail "could not get subdir under '$cache_subdir'"
         return 1
     fi
-
-
 }
 
 utils_cache__reset(){
@@ -99,6 +106,20 @@ utils_cache__reset(){
     rm -r "$cache_dir"/* 
 }
 
+utils_cache__list(){
+
+    local cache_home=
+    cache_home="$(utils_cache__get_home )" 
+
+    if ! [ -d "$cache_home" ] ; then 
+        fail "no valid cachedir under '$cache_dir'"
+        return 1
+    fi
+
+    echo  "$cache_home"
+    ls -al  "$cache_home"
+}
+
     
 utils_cache__run(){
     
@@ -115,11 +136,15 @@ utils_cache__run(){
                 return 1
                 ;;
             home|info)  
-                utils_cache__get_cache_home 
+                utils_cache__get_home 
                 break
                 ;;
             reset)  
                 utils_cache__reset "$opt_quiet" "$@"
+                break
+                ;;
+            ls|list)  
+                utils_cache__list  "$@"
                 break
                 ;;
             *) 
@@ -128,41 +153,44 @@ utils_cache__run(){
                 ;;
         esac
     done
-
 }
-
 
 utils_cache__main() {
 
-	if [ $# -eq 0 ]; then
-		perl -ne 'die "$1\n" if /^#\s+(Usage:.*)$/' "$0" >&2
-		exit 1
-	else
-		case "$1" in
-		-h | --help)
-			perl -ne 'print "$1\n" if /^\s*#\s+(.*)/; exit if /^\s*[^#\s]+/;' "$0" >&2
-			exit 1
-			;;
-		*) : ;;
-		esac
-	fi
+    UTILS_MAINSCRIPT_DIR="$(dirname "$0")"
 
-    local libmain=
-    #local libmain="$BKB_MAINSCRIPT_DIR/libmain.sh"
-	if [ -n "${libmain:-}" ] ; then
-       . "$libmain"  || die "Err: could not source libmain" 
+    if [ -t 0 ] ; then
+        if [ $# -eq 0 ] ; then
+            info "not enough args"
+            perl -ne 's/^#+\s*//g; die "usage: $_" if($_ && $s); $s=1 if (/^SYNOPSIS\s*$/);' "$0" >&2
+            exit 1
+        fi
+    else
+        die "Err: cannot read from stdin please run interactively"
     fi
+
+    while [ $# -gt 0 ]; do
+        case "${1:-}" in
+            -h | --help)
+                perl -ne 'print "$1\n" if /^\s*#\s(.*)/; exit if /^\s*[^#\s]+/;' "$0" >&2
+                exit 1
+            ;;
+            -*) break ;;
+            *) break ;;
+        esac
+        shift
+    done
+
+    # . "$UTILS_MAINSCRIPT_DIR/libmain.sh"
 }
+
 
 #### Modulino
 
-if [ -z "${BKB_MAINSCRIPT_DIR:-}" ]; then
-	BKB_MAINSCRIPT_DIR="$(absdir "$(dirname "$0")")" || die "Err: could not get absdir for '$0'"
-	[ -d "$BKB_MAINSCRIPT_DIR" ] || die "Err: invalid dir for '$BKB_MAINSCRIPT_DIR' for '$0'"
-	utils_cache__main "$@" && utils_cache__init && utils_cache__run "$@" || die "Abort ..."
+if [ -z "${UTILS_MAINSCRIPT_DIR:-}" ]; then
+    utils_cache__main "$@" || die 'Abort main ...'
+    utils_cache__init || die 'Abort init ...'
+    utils_cache__run "$@" || die 'Abort run ...'
 else
-	utils_cache__init || {
-		fail " could not init"
-		return 1
-	}
+    utils_cache__init 
 fi

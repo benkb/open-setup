@@ -1,0 +1,109 @@
+#!/bin/sh
+
+# Do things with cwd / PWD
+#
+# Copy, edit, etc. the "C"urrent "W"orking "D"irectory
+#
+#
+# Usage: [Options] [Commands], or run with --help
+#
+# Options:
+#   --help          show help
+#
+# Commands:
+#
+#   copy            copy the cwd into the clipboard
+#
+
+set -eu
+
+prn() { printf "%s" "$@"; }
+fail() { echo "Fail: $*" >&2; }
+info() { echo "$@" >&2; }
+die() {
+    echo "$@" >&2
+    exit 1
+}
+
+stamp() { date +'%Y%m%d%H%M%S'; }
+absdir() (cd "${1}" && pwd -P )
+
+utils_cwd__init() {
+    #utils_libmain__bkblib 'libtest.sh' 'utils'
+    :
+}
+
+utils_cwdutils__copy(){
+
+    local os
+    os="$(uname | tr '[:upper:]' '[:lower:]')" ||  die 'could no get os'
+
+    if [ -z "$os" ] ; then die 'could not get os'; fi
+
+    case "$os" in
+        darwin) 
+            prn "$PWD" | pbcopy && prn "$PWD"
+            ;;
+        *)
+            die "Err: todo cwdcopy fo ros '$os'"
+            ;;
+    esac
+}
+
+utils_cwd__run() {
+    while [ $# -gt 0 ]; do
+        local arg="$1"
+        shift
+        case "$arg" in
+        -h|--help)
+            fail "option reserved for cli"
+            return 1
+            ;;
+        -*)
+            fail "unknown option '$arg'"
+            return 1
+            ;;
+        copy) 
+            utils_cwdutils__copy "$@" 
+            return 0
+            ;;
+        *)
+            fail "unknown cmd '$arg'"
+            return 1
+            ;;
+        esac
+        shift
+    done
+
+}
+
+utils_cwd__main() {
+
+    if [ $# -eq 0 ]; then
+        perl -ne 'die "$1\n" if /^#\s+(Usage:.*)$/' "$0" >&2
+        exit 1
+    else
+        case "$1" in
+        -h | --help)
+            perl -ne 'print "$1\n" if /^\s*#\s(.*)/; exit if /^\s*[^#\s]+/;' "$0" >&2
+            exit 1
+            ;;
+        *) : ;;
+        esac
+    fi
+
+    UTILS_MAINSCRIPT_DIR="$(dirname "$0")" 
+    [ -d "$UTILS_MAINSCRIPT_DIR" ] || die "Err: invalid UTILS_MAINSCRIPT_DIR '$UTILS_MAINSCRIPT_DIR'"
+
+    # . "$UTILS_MAINSCRIPT_DIR/libmain.sh"
+} 
+
+#### Modulino
+
+if [ -z "${UTILS_MAINSCRIPT_DIR:-}" ]; then
+    utils_cwd__main "$@" && utils_cwd__init && utils_cwd__run "$@" || die "Abort ..."
+else
+    utils_cwd__init 
+fi
+
+

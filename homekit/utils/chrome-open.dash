@@ -1,19 +1,29 @@
 #!/bin/sh
-
-# Template for shell scripts
 #
-# Shell scripts that also can be used as modules/libraries for other scripts.
-# When used as libraries this is how its done:
+# NAME
 #
-# Usage: [Options] [filename|url], or run with --help
+#   template - Template for shell scripts
 #
-# Options:
+# DESCRIPTION
+#
+#   open different sources in Chrome:
+#   - urls
+#   - text files (.md/.txt)
+#   - bookmark files (.webloc)
+#
+# SYNOPSIS
+#
+#   chrome-open [OPTIONS] [input], or run with --help
+#
+# OPTIONS
+#
 #   --help          show help
 #
 
 set -eu
 
 prn() { printf "%s" "$@"; }
+warn() { echo "Warn: $*" >&2; }
 fail() { echo "Fail: $*" >&2; }
 info() { echo "$@" >&2; }
 die() {
@@ -21,15 +31,20 @@ die() {
 	exit 1
 }
 
-absdir() { (cd "${1}" && pwd -P); }
 stamp() { date +'%Y%m%d%H%M%S'; }
+absdir() (cd "${1}" && pwd -P)
 
 
 #### Lib
 
 utils_chrome_open__init() {
 
-    local maindir="${BKB_MAINSCRIPT_DIR:-}"
+    if ! [ -d "${UTILS_MAINSCRIPT_DIR:-}" ]; then
+        fail "invalid UTILS_MAINSCRIPT_DIR in '${UTILS_MAINSCRIPT_DIR:-}'"
+        return 1
+    fi
+
+    local maindir="${UTILS_MAINSCRIPT_DIR:-}"
 
     . "$maindir/liburl.sh"
     . "$maindir/webloc.dash"
@@ -61,14 +76,14 @@ utils_chrome_open__run() {
     local address=
     case "${input##*/}" in
         *.webloc)
-            address="$(webloc__geturl "$input")" || {
+            address="$(utils_webloc__geturl "$input")" || {
                 fail "could not get file '$input'"
                 return 1
             }
 
             ;;
         *)
-            address="$(liburl__get_url "$input")" || {
+            address="$(utils_liburl__get_url "$input")" || {
                 fail "could not get file '$input'"
                 return 1
             }
@@ -86,34 +101,36 @@ utils_chrome_open__run() {
     
 }
 
+
 utils_chrome_open__main() {
 
-    if [ $# -eq 0 ]; then
-        perl -ne 'die "$1\n" if /^#\s+(Usage:.*)$/' "$0" >&2
-        exit 1
-    else
-        case "$1" in
-        -h | --help)
-            perl -ne 'print "$1\n" if /^\s*#\s+(.*)/; exit if /^\s*[^#\s]+/;' "$0" >&2
+    UTILS_MAINSCRIPT_DIR="$(dirname "$0")"
+
+    if [ -t 0 ] ; then
+        if [ $# -eq 0 ] ; then
+            info "not enough args"
+            perl -ne 's/^#+\s*//g; die "usage: $_" if($_ && $s); $s=1 if (/^SYNOPSIS\s*$/);' "$0" >&2
             exit 1
-            ;;
-        *) : ;;
-        esac
+        fi
+    else
+        die "Err: cannot read from stdin please run interactively"
     fi
 
-    #local libmain="$BKB_MAINSCRIPT_DIR/libmain.sh"
-    if [ -f "${libmain:-}" ]; then
-        . "$libmain" || die "Err: could not source bkblib"
-    fi
+    while [ $# -gt 0 ]; do
+        case "${1:-}" in
+            -h | --help)
+                perl -ne 'print "$1\n" if /^\s*#\s(.*)/; exit if /^\s*[^#\s]+/;' "$0" >&2
+                exit 1
+            ;;
+            -*) break ;;
+            *) break ;;
+        esac
+        shift
+    done
+
+    # . "$UTILS_MAINSCRIPT_DIR/libmain.sh"
 }
 
-if [ -z "${BKB_MAINSCRIPT_DIR:-}" ]; then
-    BKB_MAINSCRIPT_DIR="$(absdir "$(dirname "$0")")" || die "Err: could not get absdir for '$0'"
-    [ -d "$BKB_MAINSCRIPT_DIR" ] || die "Err: invalid dir for '$BKB_MAINSCRIPT_DIR' for '$0'"
-    utils_chrome_open__main "$@" && utils_chrome_open__init && utils_chrome_open__run "$@" || die "Abort ..."
-else
-    utils_chrome_open__init || {
-        fail "(utils_chrome_open__libinit): could not init"
-        return 1
-    }
-fi
+utils_chrome_open__main "$@" || die 'Abort main ...'
+utils_chrome_open__init  || die 'Abort init ...'
+utils_chrome_open__run "$@" || die 'Abort run ...'

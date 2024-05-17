@@ -21,7 +21,7 @@ die() {
 stamp() { date +'%Y%m%d%H%M%S'; }
 
 
-unpack__file(){
+utils_unpack__file(){
     local input_file="${1:-}"
     if [ -z "$input_file" ] || ! [ -f "$input_file" ] ; then
         fail "invalid input file under '$input_file'"
@@ -62,41 +62,3 @@ unpack__file(){
 
 
 
-unpack__main() {
-	local usage_pl='die "$1\n" if /^#\s+(Usage:.*)$/'
-	local help_pl='print "$1\n" if /^\s*#\s+(.*)/; exit if /^\s*[^#\s]+/;'
-
-	while [ $# -gt 0 ]; do
-		case "$1" in
-		-h | --help)
-			perl -ne "$help_pl" "$0" >&2
-			exit 1
-			;;
-		-*)
-			info "unknown option"
-			perl -ne "$usage_pl" "$0" >&2
-			exit 1
-			;;
-		*) break ;;
-		esac
-		shift
-	done
-
-	if [ $# -gt 0 ]; then
-        unpack__file "$1"
-	else
-		perl -ne "$usage_pl" "$0" >&2
-		exit 1
-	fi
-
-
-
-    if [ $? -eq 0 ]; then
-        echo "OK: unpacking worked "
-    else
-        die "Err: unpacking failed"
-    fi
-
-}
-
-unpack__main "$@" 

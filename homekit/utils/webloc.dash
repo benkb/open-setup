@@ -1,20 +1,33 @@
 #!/bin/sh
-
-# Template for shell scripts
 #
-# Shell scripts that also can be used as modules/libraries for other scripts.
-# When used as libraries this is how its done:
+# NAME
 #
-# Usage: [Options] [Commands] [filename], or run with --help
+#   webloc - Handling of .weblocfiles
 #
-# Options:
-#   --help          show help
+# DESCRIPTION
 #
-# Commands:
-# geturl:   get url from webloc
-# print:    print webloc xml to std
-# write:    write to disk, get filename from title
+#   Webloc files (.webloc) are xml base text files that contain an URL, and they 
+#   can be used as bookmark files
 #
+# SYNOPSIS
+#
+#   webloc [COMMANDS] [INPUT] [OUTPUT], or run with --help
+#
+# COMMANDS
+#
+#   geturl <.webloc file>       extract and print the url of an .webloc file
+#   print <INPUT>               print webloc xml to stdout
+#   write <INPUT> <OUTPUT>       same as `print`, but write to file
+#
+# INPUTS
+#
+#   - text file (.md/.txt)
+#   - url
+#
+# OUTPUT
+#
+#   .webloc file
+#   
 
 set -eu
 
@@ -30,7 +43,7 @@ absdir() { (cd "${1}" && pwd -P); }
 stamp() { date +'%Y%m%d%H%M%S'; }
 
 utils_webloc__init() {
-    . "$BKB_MAINSCRIPT_DIR/liburl.sh"
+    . "$UTILS_MAINSCRIPT_DIR/liburl.sh"
 }
 
 
@@ -192,33 +205,43 @@ utils_webloc__run() {
 
 utils_webloc__main() {
 
-	if [ $# -eq 0 ]; then
-		perl -ne 'die "$1\n" if /^#\s+(Usage:.*)$/' "$0" >&2
-		exit 1
-	else
-		case "$1" in
-		-h | --help)
-			perl -ne 'print "$1\n" if /^\s*#\s+(.*)/; exit if /^\s*[^#\s]+/;' "$0" >&2
-			exit 1
-			;;
-		*) : ;;
-		esac
-	fi
+    UTILS_MAINSCRIPT_DIR="$(dirname "$0")"
 
-    #local bkblib="$BKB_MAINSCRIPT_DIR/bkblib.sh"
-	if [ -f "${bkblib:-}" ]; then
-		. "$bkblib" || die "Err: could not source bkblib" 
-	fi
-    :
+    if [ -t 0 ] ; then
+        if [ $# -eq 0 ] ; then
+            info "not enough args"
+            perl -ne 's/^#+\s*//g; die "usage: $_" if($_ && $s); $s=1 if (/^SYNOPSIS\s*$/);' "$0" >&2
+            exit 1
+        fi
+    else
+        die "Err: cannot read from stdin please run interactively"
+    fi
+
+    while [ $# -gt 0 ]; do
+        case "${1:-}" in
+            -h | --help)
+                perl -ne 'print "$1\n" if /^\s*#\s(.*)/; exit if /^\s*[^#\s]+/;' "$0" >&2
+                exit 1
+            ;;
+            -*) break ;;
+            *) break ;;
+        esac
+        shift
+    done
+
+    # . "$UTILS_MAINSCRIPT_DIR/libmain.sh"
 }
 
-if [ -z "${BKB_MAINSCRIPT_DIR:-}" ]; then
-	BKB_MAINSCRIPT_DIR="$(absdir "$(dirname "$0")")" || die "Err: could not get absdir for '$0'"
-	[ -d "$BKB_MAINSCRIPT_DIR" ] || die "Err: invalid dir for '$BKB_MAINSCRIPT_DIR' for '$0'"
-	utils_webloc__main "$@" && utils_webloc__init && utils_webloc__run "$@" || die "Abort ..."
+
+#### Modulino
+
+if [ -z "${UTILS_MAINSCRIPT_DIR:-}" ]; then
+    utils_webloc__main "$@" || die 'Abort main ...'
+    utils_webloc__init  || die 'Abort init ...'
+    utils_webloc__run "$@" || die 'Abort run ...'
 else
-	utils_webloc__init || {
-		fail "(utils_webloc__libinit): could not init"
-		return 1
-	}
+    utils_webloc__init || {
+        fail 'could not run init'
+        return 1
+    }
 fi

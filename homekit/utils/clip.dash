@@ -37,7 +37,7 @@ help() {
 
 secstamp() { date +'%Y%m%d%H%M%S'; }
 
-absdir() { (cd "${1}" && pwd -P); }
+absdir() (cd "${1}" && pwd -P)
 
 utils_clip__init() {
     :
@@ -166,23 +166,15 @@ utils_clip__main() {
     *) : ;;
     esac
 
-    local libmain=
-    #local libmain="$BKB_MAINSCRIPT_DIR/libmain.sh"
-    if [ -n "${libmain:-}" ]; then
-        . "$libmain" || die "Err: could not source libmain.sh"
-    fi
-
+    UTILS_MAINSCRIPT_DIR="$(dirname "$0")" || die "Err: could not get absdir for '$0'"
+    [ -d "$UTILS_MAINSCRIPT_DIR" ] || die "Err: invalid dir for '$UTILS_MAINSCRIPT_DIR' for '$0'"
+    # . "$UTILS_MAINSCRIPT_DIR/libmain.sh"
 } 
 
 #### Modulino
 
-if [ -z "${BKB_MAINSCRIPT_DIR:-}" ]; then
-    BKB_MAINSCRIPT_DIR="$(absdir "$(dirname "$0")")" || die "Err: could not get absdir for '$0'"
-    [ -d "$BKB_MAINSCRIPT_DIR" ] || die "Err: invalid dir for '$BKB_MAINSCRIPT_DIR' for '$0'"
+if [ -z "${UTILS_MAINSCRIPT_DIR:-}" ]; then
     utils_clip__main "$@" && utils_clip__init && utils_clip__run "$@" || die "Abort ..."
 else
-    utils_clip__init || {
-        fail "could not init"
-        return 1
-    }
+    utils_clip__init 
 fi

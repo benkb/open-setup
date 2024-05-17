@@ -1,0 +1,58 @@
+#!/bin/sh
+#
+# NAME
+#
+#   template - Template for shell scripts
+#
+# DESCRIPTION
+#
+#   Shell scripts that also can be used as modules/libraries for other scripts.
+#   When used as libraries this is how its done:
+#
+# SYNOPSIS
+#
+#   [Options] [filename], or run with --help
+#
+# OPTIONS
+#
+#   --help          show help
+#
+
+set -eu
+
+prn() { printf "%s" "$@"; }
+fail() { echo "Fail: $*" >&2; }
+warn() { echo "Warn: $*" >&2; }
+info() { echo "$@" >&2; }
+die() {
+    echo "$@" >&2
+    exit 1
+}
+
+stamp() { date +'%Y%m%d%H%M%S'; }
+absdir() (cd "${1}" && pwd -P)
+
+utils_template__main() {
+
+    if [ $# -eq 0 ] ; then
+        printf "usage %s: " "$(basename "$0" ".${0##*.}")" >&2
+        perl -ne 'chomp;s/^#+\s*//g; if($s && $_){print " $_"; exit; };  $s=1 if(/^SYNOPSIS\s*$/) ' "$0"
+    else
+        while [ $# -gt 0 ]; do
+            case "${1:-}" in
+                -h | --help)
+                    perl -ne 'print "$1\n" if /^\s*#\s(.*)/; exit if /^\s*[^#\s]+/;' "$0" >&2
+                    exit 1
+                ;;
+                *) break ;;
+            esac
+        done
+    fi
+
+    UTILS_MAINSCRIPT_DIR="$(dirname "$0")"
+    [ -d "$UTILS_MAINSCRIPT_DIR" ] || die "Err: invalid UTILS_MAINSCRIPT_DIR '$UTILS_MAINSCRIPT_DIR'"
+
+    # . "$UTILS_MAINSCRIPT_DIR/libmain.sh"
+}
+
+utils_template__main "$@" || die 'Abort utils_template__main ...'

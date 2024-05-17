@@ -1,0 +1,20 @@
+NAME
+  
+  cache - handle the user cache
+
+DESCRIPTION
+
+  Handle actions around personal cache directory
+
+SYNOPSIS
+
+  <Command> [args], or run --help
+
+OPTIONS
+
+  Commands: 
+
+      reset 
+      home|info        show the cache dir
+
+

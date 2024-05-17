@@ -214,7 +214,7 @@ utils_libmain__getlib() {
 	_utils_libmain__getlib "$lib_str" $@
 }
 
-utils_libmain__loadlib() { # for foolib.sh modulino.dash
+utils_libmain__bkblib() { # for foolib.sh modulino.dash
 	local lib="${1:-}"
 	if [ -z "$lib" ]; then
 		fail "lib empty"
@@ -386,7 +386,7 @@ utils_libmain__link_to_target() {
 	fi
 
     local target_dir=
-    target_dir="$(dirname "$target")" && [ -d "$target_dir" ] ||
+    target_dir="$(dirname "$target")" && [ -d "$target_dir" ] || {
 		fail "no valid target_dir '$target_dir'"
 		return 1
     }
