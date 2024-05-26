@@ -7,23 +7,45 @@
 # - executed by the command interpreters for login shells. Must be compatible with /bin/sh (bash,dash,ksh)
 #
 #
-#
-#
-
 export BKB_LIBRARY_HOME="$HOME/.bkblib"
+#
+# XDG Base Directory Specification
+#
+# for user-specific files
+# https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+#
+test -n "$XDG_CONFIG_HOME" || export XDG_CONFIG_HOME="$HOME/.config"
+
+# data files 
+test -n "$XDG_DATA_HOME" || export XDG_DATA_HOME="$HOME/.local/share"
+
+#  state files should be stored
+# contains state data that should persist between (application) restarts, but that is not important or portable enough to the user that it should be stored in $XDG_DATA_HOME. It may contain:
+#actions history (logs, history, recently used files, …)
+#current state of the application that can be reused on a restart (view, layout, open files, undo history, …)
+test -n "$XDG_STATE_HOME" || export XDG_STATE_HOME="$HOME/.local/state"
+
+# non-essential data files
+#XDG_RUNTIME_DIR defines the base directory relative to which user-specific non-essential runtime files and other file objects (such as sockets, named pipes, ...
+test -n "$XDG_CACHE_HOME" || export XDG_CACHE_HOME="$HOME/.cache"
+
+
+###### Host Info 
+#
+test -n "$HOST_OS" || export HOST_OS="$(uname | tr '[:upper:]' '[:lower:]')" 
+
+test -n "$HOST_BIN_GFIND" || export HOST_BIN_GFIND="$(command -v gfind)" 
+
+
 
 ########## PATH
-
 export PATH='/bin:/sbin:/usr/bin:/usr/local/bin'
-
 ## System Variables
 ### JAVA_HOME
 test -d "$HOME/build/openjdk/jdk-22.jdk/Contents/Home" && export JAVA_HOME="$HOME/build/openjdk/jdk-22.jdk/Contents/Home"
-
 ### LLVM_HOME
 export LLVM_VERSION=12
 test -d "/usr/local/opt/$LLVM_VERSION" && export LLVM_HOME="/usr/local/opt/$LLVM_VERSION"
-
 ## PATH
 test -d '/usr/sbin'         && export PATH="/usr/sbin:$PATH"
 test -d '/opt/bin'          && export PATH="/opt/bin:$PATH"
@@ -41,19 +63,15 @@ test -d "$HOME/.cargo/bin" && export PATH="$HOME/.cargo/bin:$PATH"
 test -d "/Applications/Racket v8.12/bin" &&  export PATH="/Applications/Racket v8.12/bin:$PATH"
 test -d "$HOME/go/bin" && export PATH="$HOME/go/bin:$PATH"
 test -d "$HOME/Library/Application Support/Coursier/bin" && export PATH="$HOME/Library/Application Support/Coursier/bin:$PATH"
-
 ### LANG 
 test -d "$JAVA_HOME" &&  export PATH="$JAVA_HOME/bin:$PATH"
 test -d "$LLVM_HOME" &&  export PATH="$LLVM_HOME/bin:$PATH"
-
 #
 ## ALIASES
 # In profile only essential commands
 test -f '/usr/local/opt/vim/bin/vim' && alias vim='/usr/local/opt/vim/bin/vim'
-
-test -f $HOME/.sbin/abspath.sh && alias abspath="dash $HOME/.sbin/abspath.sh"
-test -f $HOME/.sbin/ack.pl && alias ack="perl $HOME/.sbin/ack.pl"
-test -f $HOME/.sbin/rename.pl && alias rename="perl $HOME/.sbin/rename.pl"
-
-
-
+test -f $HOME/.bin/abspath.sh && alias abspath="dash $HOME/.bin/abspath.sh"
+test -f $HOME/.bin/ack.pl && alias ack="perl $HOME/.bin/ack.pl"
+test -f $HOME/.bin/rename.pl && alias rename="perl $HOME/.bin/rename.pl"
+alias perl='/Applications/MAMP/Library/bin/perl'
+alias cpan='/Applications/MAMP/Library/bin/cpan'

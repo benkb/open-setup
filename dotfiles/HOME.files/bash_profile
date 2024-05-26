@@ -1,3 +1,4 @@
+source ~/.profile
 # bash_profile: loaded in interactive login shell
 # 
 # Because of this file's existence, neither ~/.bash_login nor ~/.profile

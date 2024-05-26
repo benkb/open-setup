@@ -10,6 +10,8 @@
 
 ######## NONINTERACTIVE SHELL
 #
+#
+DEBUG='1'
 
 if [ -f ~/.profile ] ; then
     . ~/.profile
@@ -17,14 +19,28 @@ else
     echo "Warn: ~/.profile not loaded" >&2
 fi
 
+file_sourcing(){
+    for dir in "$@" ; do
+        [ -n "$DEBUG" ] && echo "try dir '$dir'"
+        [ -d "$dir" ] || continue
+        for f in $dir/*.*sh; do
+            [ -n "$DEBUG" ] && echo "try file '$f'"
+            [ -f "$f" ] || continue
+            case "${f##*/}" in
+                _*|lib*) continue ;;
+                *.sh|*.bash)
+                    [ -n "$DEBUG" ] && echo source $f
+                    source "$f"
+                ;;
+                *) : ;;
+            esac
+        done
+    done
+}
 
-bashrc__script_path="$HOME/.bashrc_utils.bash"
 
 
-bashrc__script_loaded=
-[ -f "$bashrc__script_path" ] && source "$bashrc__script_path" && bashrc__script_loaded=1 
-
-[ -n "$bashrc__script_loaded" ] && bashrc_utils__run 'file_sourcing' "$HOME/kit" 'conf'
+file_sourcing "$HOME/kit/conf"
 
 
 # if this is a non-interactive (login) shell, then this is it
@@ -32,9 +48,12 @@ bashrc__script_loaded=
 
 ######## INTERACTIVE SHELL
 #
-if [ -n "$bashrc__script_loaded" ]; then
-    bashrc_utils__run 'file_sourcing' "$HOME/kit" 'aliases'
-    bashrc_utils__run 'alias_gen' "$HOME/kit" 'utils' 'vi-utils'
+file_sourcing "$HOME/kit/aliases" 
+
+if [ -n "${XDG_CACHE_HOME:-}" ] ; then
+    file_sourcing "${XDG_CACHE_HOME}/aliases"
+else
+    file_sourcing "$HOME/.cache/aliases"
 fi
 
 

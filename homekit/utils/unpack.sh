@@ -1,14 +1,33 @@
 #!/bin/sh
+#
+# NAME
+#
+#   unpack -  Unpack files
+#
+# DESCRIPTION
+#
+#   Decompress a number of files
+#
+#   tar, gz, tgz, bz2, xz, tbz2
+#   tar, lzma, bz2, rar, gz , zip, .Z, .7z, xz, exe
+#
+#   Can also read from STDIN as part of a pipe
+#
+#   ls | unpack
+#
+# 
+#
+# SYNOPSIS
+#
+#   unpack  [OPTIONS] [file ... ], or run with --help
+#
+# OPTIONS
+#
+#   -d|--dir <directory>    Instead of a file use directory as input
+#
+#
 
-# untar - unpack compressed files
-#
-# Usage: [Options] [filename]
-#
-# Options:
-#   --help          show help
-#
-
-set -u
+set -eu
 
 prn() { printf "%s" "$@"; }
 fail() { echo "Fail: $*" >&2; }
@@ -20,6 +39,13 @@ die() {
 
 stamp() { date +'%Y%m%d%H%M%S'; }
 
+utils_unpack__init() {
+    if ! [ -d "${UTILS_MAINSCRIPT_DIR:-}" ]; then
+        fail "invalid UTILS_MAINSCRIPT_DIR in '${UTILS_MAINSCRIPT_DIR:-}'"
+        return 1
+    fi
+}
+
 
 utils_unpack__file(){
     local input_file="${1:-}"
@@ -29,11 +55,14 @@ utils_unpack__file(){
     fi
 
     local input_base="${input_file##*/}"
-    local input_name="${input_base%.*}"
     local input_ext="${input_base##*.}"
 
+    local input_dir=
+    input_dir="$(dirname "$input_file")"
+
+
     case "$input_base" in
-    *.tar*)
+    *.tar.*)
         local tar_opt=
         case "$input_ext" in
             tar) tar_opt=xvf ;;
@@ -44,21 +73,142 @@ utils_unpack__file(){
             tbz2) tar_opt=xvjf ;;
         *) die "Err: invalid tar extension '$input_ext'" ;;
         esac
+        local input_name_dot="${input_base%.*}"
+        local input_name="${input_name_dot%.*}"
+        if [ -d "$input_dir/$input_name" ] ; then
+            fail "directory '$input_dir/$input_name' already exists"
+            return 1
+        fi
         tar $tar_opt "$input_file"
         ;;
+    *)
+        local input_name="${input_base%.*}"
+        if [ -d "$input_dir/$input_name" ] ; then
+            fail "directory '$input_dir/$input_name' already exists"
+            return 1
+        fi
 
-    *.lzma) unlzma "$input_file" ;;
-    *.bz2) bunzip2 "$input_file" ;;
-    *.rar) unrar x -ad "$input_file" ;;
-    *.gz) gunzip "$input_file" ;;
-    *.zip) unzip "$input_file" ;;
-    *.Z) uncompress "$input_file" ;;
-    *.7z) 7z x "$input_file" ;;
-    *.xz) unxz "$input_file" ;;
-    *.exe) cabextract "$input_file" ;;
-    *) echo "extract: '$input_ext' - unknown archive method" ;;
+        case "$input_ext" in
+            tar) tar xvf "$input_file" ;;
+            lzma) unlzma "$input_file" ;;
+            bz2) bunzip2 "$input_file" ;;
+            rar) unrar x -ad "$input_file" ;;
+            gz) gunzip "$input_file" ;;
+            zip) unzip "$input_file" ;;
+            Z) uncompress "$input_file" ;;
+            7z) 7z x "$input_file" ;;
+            xz) unxz "$input_file" ;;
+            exe) cabextract "$input_file" ;;
+            *) echo "skip: '$input_ext' - unknown archive method" ;;
+        esac
+    ;;
     esac
 }
 
 
 
+utils_unpack__run() {
+
+    local opt_dir=
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        -d|--dir)
+            opt_dir="${2:-}"
+            if [ -n "$opt_dir" ] ; then
+                shift
+            else
+                fail "argument missing of -d|--dir"
+                return 1
+            fi
+            ;;
+        -*)
+            info "invalid arg '$1', run --help"
+            return 1
+            ;;
+        *) break ;;
+        esac
+        shift
+    done
+
+
+    if [ -t 0 ]; then
+        if [ -n "$opt_dir" ] ; then
+            [ -d "$opt_dir" ] || {
+                fail "dir is invalid '$dir'"
+                return 1
+            }
+            for file in "$opt_dir"/* ; do
+                echo ffff $file
+                if [ -f "$file" ]; then
+                    utils_unpack__file "$file"
+                else
+                    info "skip invalid file '$file'"
+                fi
+            done
+
+        else
+            for file in "$@" ; do
+                if [ -f "$file" ] ; then 
+                    utils_unpack__file "$file"
+                else
+                    info "skip invalid file '$file'"
+                fi
+            done
+        fi
+    else
+        if [ -n "$opt_dir" ] ; then
+            fail "not opt_dir when reading from stdin"
+            return 1
+        fi
+
+        while read -r file ; do
+            if [ -f "$file" ] ; then 
+                utils_unpack__file "$file"
+            else
+                info "skip invalid file '$file'"
+            fi
+        done
+    fi
+}
+
+utils_unpack__main() {
+
+    UTILS_MAINSCRIPT_DIR="$(dirname "$0")"
+
+    if [ -t 0 ] ; then
+        if [ $# -eq 0 ] ; then
+            info "not enough args"
+            perl -ne 's/^#+\s*//g; die "usage: $_" if($_ && $s); $s=1 if (/^SYNOPSIS\s*$/);' "$0" >&2
+            exit 1
+        fi
+    else
+        die "Err: cannot read from stdin please run interactively"
+    fi
+
+    while [ $# -gt 0 ]; do
+        case "${1:-}" in
+            -h | --help)
+                perl -ne 'print "$1\n" if /^\s*#\s(.*)/; exit if /^\s*[^#\s]+/;' "$0" >&2
+                exit 1
+            ;;
+            -*) break ;;
+            *) break ;;
+        esac
+        shift
+    done
+
+    # . "$UTILS_MAINSCRIPT_DIR/libmain.sh"
+}
+
+#### Modulino
+
+if [ -z "${UTILS_MAINSCRIPT_DIR:-}" ]; then
+    utils_unpack__main "$@" || die 'Abort main ...'
+    utils_unpack__init  || die 'Abort init ...'
+    utils_unpack__run "$@" || die 'Abort run ...'
+else
+    utils_unpack__init || {
+        fail 'could not run init'
+        return 1
+    }
+fi

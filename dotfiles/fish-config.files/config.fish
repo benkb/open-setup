@@ -18,6 +18,27 @@ set -gx GPG_TTY (/usr/bin/tty)
 
 ######## NONINTERACTIVE SHELL
 
+set DEBUG ''
+
+function file_sourcing        
+
+    for dir in $argv
+        [ -n "$DEBUG" ] && echo "try dir '$dir'"
+        [ -d "$dir" ] || continue
+
+        for f in $dir/*.*sh
+            [ -n "$DEBUG" ] && echo "try file '$f'"
+            [ -f "$f" ] || continue
+            switch $f
+                case '_*' 'lib*'
+                    continue
+                case '*.sh' '*.fish'
+                    [ -n "$DEBUG" ] && echo source $f
+                    source $f
+            end
+        end
+    end
+end
 
 if [ -f ~/.profile ] 
     . ~/.profile
@@ -26,23 +47,21 @@ else
 end
 
 
-set config_utils "$HOME/.config/fish/config_utils.fish"
-set is_config_utils_sourced ''
-[ -f "$config_utils" ] && source "$config_utils" && set is_config_utils_sourced 1 
 
-[ -n "$is_config_utils_sourced" ] && config_utils__run 'file_sourcing' "$HOME/kit/conf"
+file_sourcing "$HOME/kit/conf"
 
 status is-interactive || return 0 
 
 
 ######## INTERACTIVE SHELL
 
-if [ -n "$is_config_utils_sourced" ] 
-    config_utils__run 'alias_gen' "$HOME/kit/" 'utils' 'vi-utils' 'scripts'
+file_sourcing "$HOME/kit/aliases" 
 
-    config_utils__run 'file_sourcing' "$HOME/kit" 'conf' 'aliases'
 
+if [ -n "$XDG_CACHE_HOME" ] 
+    file_sourcing "$XDG_CACHE_HOME/aliases"
+else
+    file_sourcing "$HOME/.cache/aliases"
 end
-
 
 

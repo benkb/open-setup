@@ -31,8 +31,6 @@ libutil__abspath(){
 }
 
         
-        
-
 
 ##  Link something to a target 
 # - a file or a dir, or a link

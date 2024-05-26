@@ -12,6 +12,8 @@ absdir() {
     fi
 }
 
+LINKDIR="${1:-}"
+
 ##
 
 SCRIPTNAME="${0##*/}"
@@ -50,60 +52,68 @@ handle_dir(){
     local cwdir="${1:-}"
     [ -n "$cwdir" ] || die "Err: no cwdir"
 
-   [ -d "$cwdir" ] || die "Err: no valid cwdir '$cwdir'"
+    [ -d "$cwdir" ] || die "Err: no valid cwdir '$cwdir'"
 
-   local cwdir_abs=
-   cwdir_abs="$(libutil__abspath "$cwdir")" || die "Err: could not get abs path"
+    local cwdir_abs=
+    cwdir_abs="$(libutil__abspath "$cwdir")" || die "Err: could not get abs path"
    
 
     for i in "$cwdir_abs"/* ; do
-      [ -f "$i" ] || [ -d "$i" ] || continue 
+        [ -d "$i" ] || continue 
 
         local bi="${i##*/}"
         local target_name="${bi%.*}"
 
-        if [ -d "$i" ] ; then
-            # magic: fish-config -> config/fish; HOME.d -> /home/baba
-            local target_folder="$(perl -e '($a)=@ARGV; print(join("/", reverse( map { (/^[A-Z]+$/)?$ENV{$_}:$_ } split("-", $a))))' "$target_name")" 
+        # magic: fish-config -> config/fish; HOME.d -> /home/baba
+        local target_folder="$(perl -e '($a)=@ARGV; print(join("/", reverse( map { (/^[A-Z]+$/)?$ENV{$_}:$_ } split("-", $a))))' "$target_name")" 
 
-            local target_path=
-            case "$target_folder" in
-                /*) die "Err: this absolut path makes no sense '$target_folder'" ;;
-                */*) 
-                    target_path="$HOME/.$target_folder"
-                    create_parent_dir "$target_path"
-                    ;;
-                *)
-                    target_path="$HOME/.$target_folder"
-            esac
+        local target_path=
+        case "$target_folder" in
+            $HOME) : ;;
+            /*) die "Err: this absolut path makes no sense '$target_folder'" ;;
+            */*) 
+                target_path="$HOME/.$target_folder"
+                create_parent_dir "$target_path"
+                ;;
+            *) target_path="$HOME/.$target_folder" ;;
+        esac
 
-            case "$bi" in
-                -*|*-) die "Err: invalid dirname '$bi'" ;;
-                *.d|*.dir)   
+
+        rm -f "$LINKDIR/$bi"
+        ln -s "$i" "$LINKDIR/$bi"
+        rm -f "$LINKDIR/.$bi"
+        ln -s "$i" "$LINKDIR/.$bi"
+
+        case "$bi" in
+            -*|*-) die "Err: invalid dirname '$bi'" ;;
+           *.d|*.dir) 
+               [ -n "$target_path" ] || die "Err: needs target path" 
+               echo libutil__link_to_target "$i" "$target_path" 
+               
+               libutil__link_to_target "$i" "$target_path" 
+               ;;
+            *.f|*.files) 
+                if [ -n "$target_path" ] ; then
                     mkdir -p "$target_path" || die "Err: could not create '$target_path'"
-                    for ii in "$i"/*; do
-                        local bii="${ii##*/}"
-                        libutil__link_to_target "$ii" "${target_path}/${bii}"
-                    done
+                    target_path="$target_path/"
+                else
+                    target_path="$HOME/."
+                fi
 
-                    ;;
-               *.l|*.link) 
-                   libutil__link_to_target "$i" "$target_path" 
-                   ;;
-                *.f|*.files) 
-                    for ii in "$i"/* ; do
-                        local bii="${ii##*/}"
-                        libutil__link_to_target "$ii" "${HOME}/.${bii}" 
-                    done
-                    ;;
-                *) 
-                    echo "Info: skipping '$bi'" >&2 
-                    continue
-                    ;;
-            esac
-
-
-        fi
+                for ii in "$i"/* ; do
+                    local bii="${ii##*/}"
+                    
+        #            echo libutil__link_to_target "$ii" "${target_path}${bii}"
+                    libutil__link_to_target "$ii" "${target_path}${bii}"
+                    rm -f "$LINKDIR/.$bii"
+                    ln -s "$ii" "$LINKDIR/.$bii"
+                done
+                ;;
+            *) 
+                echo "Info: skipping '$bi'" >&2 
+                continue
+                ;;
+        esac
     done
 }
 
