@@ -5,11 +5,11 @@ mkdir -p "$basekits"
 basejump=$HOME/base/jump
 mkdir -p "$basejump"
 
-rm -f "$basekits/openkit" 
-ln -s "$PWD" "$basekits/openkit"
+rm -f "$basekits/toolkit" 
+ln -s "$PWD" "$basekits/toolkit"
 
-rm -f "$basejump/openkit" 
-ln -s "$PWD" "$basejump/openkit"
+rm -f "$basejump/toolkit" 
+ln -s "$PWD" "$basejump/toolkit"
 
 rm -f "$basejump/kits" 
 ln -s "$basekits" "$basejump/kits"
