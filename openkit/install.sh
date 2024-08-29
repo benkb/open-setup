@@ -1,23 +1,27 @@
 
+basekits=$HOME/base/kits
+mkdir -p "$basekits"
 
 basejump=$HOME/base/jump
-
 mkdir -p "$basejump"
 
-rm -f "$HOME/kit" 
-ln -s "$PWD" "$HOME/kit"
+rm -f "$basekits/openkit" 
+ln -s "$PWD" "$basekits/openkit"
 
-rm -f "$basejump/homekit" 
-ln -s "$PWD" "$basejump/homekit"
+rm -f "$basejump/openkit" 
+ln -s "$PWD" "$basejump/openkit"
 
-rm -f "$basejump/kit" 
-ln -s "$PWD" "$basejump/kit"
+rm -f "$basejump/kits" 
+ln -s "$basekits" "$basejump/kits"
+
+rm -f $HOME/kits
+ln -s "$basekits" "$HOME/kits"
 
 
-mkdir $HOME/tools
+mkdir -p $HOME/tools
 rm -f "$basejump/tools" 
 ln -s "$PWD" "$basejump/tools"
 
-rm -f  "$HOME/tools"
+rm -f  "$HOME/tools/utils"
 ln -s "$PWD"/utils "$HOME/tools"
 
